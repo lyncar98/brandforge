@@ -1,0 +1,21 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install Python deps
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt uvicorn[standard]
+
+# Copy source
+COPY brandforge/ ./brandforge/
+COPY brands/     ./brands/
+COPY pyproject.toml .
+
+# Create output dir (mounted as volume in compose)
+RUN mkdir -p out
+
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "brandforge.server:app", "--host", "0.0.0.0", "--port", "8000"]

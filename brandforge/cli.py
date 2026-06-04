@@ -230,7 +230,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
         return 1
     from .server import create_app
     app = create_app(spec_path=args.spec, out_dir=args.out)
-    print(f"BrandForge UI  →  http://{args.host}:{args.port}")
+    print(f"BrandForge UI  ->  http://{args.host}:{args.port}")
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
     return 0
 

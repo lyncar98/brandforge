@@ -9,6 +9,7 @@ out-*/
 *.log
 node_modules/
 package-lock.json
+brandforge/static/
 .shot.js
 *.egg-info/
 build/
