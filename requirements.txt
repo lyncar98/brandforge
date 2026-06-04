@@ -4,3 +4,8 @@ httpx>=0.27,<1.0          # image output downloads
 luma-agents>=0.1,<1.0     # official Luma SDK for uni-1 image generation
 anthropic>=0.40           # official Anthropic SDK for Claude content generation
 python-dotenv>=1.0,<2.0   # load API keys from a local .env
+
+# Web UI (optional — only needed for `brandforge serve`)
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.29,<1.0
+pydantic>=2.0

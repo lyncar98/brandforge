@@ -39,6 +39,13 @@ every image prompt and the `voice` string is handed to every content brief, so
 the whole kit stays on-brand **by construction** — change the voice once,
 re-apply, and every asset moves with it.
 
+**Drift detection** makes that real: each generated asset records a hash of the
+spec inputs that produced it (its prompt/brief, params, and the brand
+`style`/`voice` actually applied). Edit a prompt — or the brand voice — and
+`plan` shows exactly which assets drifted (`~ update`) versus which are still in
+sync (`. unchanged`), without any API calls. State entries whose asset was
+deleted from the spec show as `- destroy` and are cleaned up by `prune`.
+
 ## Quick start (no API key needed)
 
 ```bash
@@ -58,8 +65,16 @@ and every piece of copy with its model and status. Open it:
 start out/gallery.html      # Windows  (macOS: open / Linux: xdg-open)
 ```
 
-Re-running is idempotent and cheap: assets already in state are skipped; only
-outstanding ones run. Add `--force` to regenerate everything.
+Re-running is idempotent and cheap: assets already in state **and unchanged** are
+skipped; only missing or drifted ones run. Add `--force` to regenerate
+everything. To work on a subset, scope any `plan`/`apply` with `--select <id>…`,
+`--group <group>`, or `--only image|content`:
+
+```bash
+python -m brandforge apply --mock --select hero_portrait   # one asset
+python -m brandforge apply --mock --group domains          # one group
+python -m brandforge plan  --mock --only content           # just the copy
+```
 
 ## Run against the real APIs
 
@@ -107,13 +122,35 @@ See [`brands/lautum/brandspec.json`](brands/lautum/brandspec.json) for the full
 
 | Command | What it does |
 | --- | --- |
-| `plan` | Diff the brandspec against state. Shows every asset and whether `apply` would create or skip it. **No API calls.** |
+| `plan` | Diff the brandspec against state: `+ create`, `~ update` (drifted/missing), `. unchanged`, `- destroy` (orphaned). **No API calls.** |
 | `apply` | Generate missing/changed assets and update state; writes `manifest.json`, `report.md`, `gallery.html`. |
+| `prune` | Delete state records (and their files) for assets removed from the spec. |
 | `gallery` | (Re)render the HTML gallery from existing state. |
 | `status` | Print the run report from state. |
 | `doctor` | Validate API keys and that both SDKs are installed. |
+| `serve` | Start the full-CRUD web UI (FastAPI). Browse assets, edit the spec, run plan/apply/prune live. |
 
-`--mock` works on `plan`/`apply`/`doctor` (no key, no spend).
+`plan` and `apply` accept `--select <id>…` / `--group <g>` / `--only image|content`
+to scope to a subset. `--mock` works on `plan`/`apply`/`doctor` (no key, no spend).
+
+## Web UI
+
+```bash
+python -m brandforge serve --spec brands/lautum/brandspec.json --out out --port 7860
+# → BrandForge UI  →  http://127.0.0.1:7860
+```
+
+The same on-brand interface you see in `gallery.html`, but live and interactive:
+
+| Tab | What it does |
+| --- | --- |
+| **Assets** | Browse all generated assets grouped by kind; inline images + copy cards; per-asset Regen and Delete buttons |
+| **Apply** | Stream live `apply` logs; one-click Force-all or Prune orphans |
+| **Plan** | Full drift diff rendered in-browser — `+`/`~`/`.`/`-` with model and detail |
+| **Spec** | JSON editor for `brandspec.json` — edit, save, then Apply to converge |
+
+The UI talks to the same `plan` / `apply` / `prune` runner methods as the CLI; the
+CLI remains the source of truth and works completely independently.
 
 ## What it handles for you
 
@@ -152,7 +189,8 @@ brandforge/
   kit.py         # the brandspec runner: plan / apply over image + content assets
   gallery.py     # on-brand HTML gallery of a run (Lautum design system)
   mock.py        # in-process fake of the image API (powers --mock and tests)
-  cli.py         # doctor / plan / apply / gallery / status
+  cli.py         # doctor / plan / apply / prune / gallery / status / serve
+  server.py      # FastAPI app: REST + SSE API + SPA shell for full-CRUD UI
 brands/lautum/   docs/   tests/
 ```
 

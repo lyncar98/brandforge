@@ -74,6 +74,53 @@ def test_plan_diffs_against_state(tmp_path):
     assert {a.action for a in actions} == {"skip"}
 
 
+def test_drift_re_plans_changed_asset(tmp_path):
+    kit = sample_kit()
+    runner = make_runner(tmp_path, kit)
+    manifest = runner.run()
+    # Editing one asset's prompt should mark only it as "update"; the rest "skip".
+    kit.assets[2].prompt = "Write a different, edgier tagline for Lautum."
+    actions = {a.asset_id: a.action for a in runner.plan(manifest)}
+    assert actions["tagline"] == "update"
+    assert actions["hero"] == "skip" and actions["tile"] == "skip"
+
+
+def test_drift_in_brand_voice_re_plans_all_content(tmp_path):
+    kit = sample_kit()
+    runner = make_runner(tmp_path, kit)
+    manifest = runner.run()
+    kit.voice = "loud, hype-driven, lots of exclamation marks"
+    actions = {a.asset_id: a.action for a in runner.plan(manifest)}
+    assert actions["tagline"] == "update"   # content depends on voice
+    assert actions["hero"] == "skip"        # images don't
+
+
+def test_apply_with_selection_only_touches_selected(tmp_path):
+    kit = sample_kit()
+    runner = make_runner(tmp_path, kit)
+    manifest = runner.run(select={"tagline"})
+    assert manifest.get("Lautum::tagline").status == JobStatus.COMPLETED
+    assert manifest.get("Lautum::hero") is None
+    assert manifest.get("Lautum::tile") is None
+
+
+def test_plan_flags_orphans_and_prune_removes_them(tmp_path):
+    kit = sample_kit()
+    runner = make_runner(tmp_path, kit)
+    manifest = runner.run()
+    # Drop an asset from the spec -> its state record is now an orphan.
+    removed_asset = kit.assets.pop()  # tagline
+    orphan_path = Path(manifest.get(f"Lautum::{removed_asset.id}").output_path)
+    assert orphan_path.exists()
+    actions = {a.action for a in runner.plan(manifest)}
+    assert "destroy" in actions
+
+    removed = runner.prune(manifest)
+    assert [a.asset_id for a in removed] == [removed_asset.id]
+    assert manifest.get(f"Lautum::{removed_asset.id}") is None
+    assert not orphan_path.exists()
+
+
 def test_content_moderation_needs_attention(tmp_path):
     kit = BrandKit(brand_name="Lautum", voice="v", assets=[
         KitAsset(id="bad", kind="content", group="messaging", label="Bad",

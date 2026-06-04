@@ -79,6 +79,7 @@ class JobRecord:
     request_id: Optional[str] = None
     input_tokens: int = 0
     output_tokens: int = 0
+    spec_hash: str = ""              # digest of the spec inputs that produced this asset (drift detection)
     updated_at: str = field(default_factory=_now)
 
     def estimated_cost(self) -> float:
@@ -148,12 +149,25 @@ class Manifest:
     def get(self, key: str) -> Optional[JobRecord]:
         return self.records.get(key)
 
-    def is_satisfied(self, key: str) -> bool:
-        """True if this job is already completed and its output file still exists."""
+    def remove(self, key: str) -> Optional[JobRecord]:
+        """Drop a record from state (used by ``prune``). Returns it if present."""
+        return self.records.pop(key, None)
+
+    def is_satisfied(self, key: str, expected_hash: Optional[str] = None) -> bool:
+        """True if this job is completed, its output file still exists, and (if a
+        hash is given and one was recorded) the spec hasn't drifted since.
+
+        Legacy records with no stored ``spec_hash`` are treated as satisfied so an
+        upgrade doesn't force a full, paid regeneration of existing assets.
+        """
         rec = self.records.get(key)
         if rec is None or rec.status != JobStatus.COMPLETED or not rec.output_path:
             return False
-        return Path(rec.output_path).exists()
+        if not Path(rec.output_path).exists():
+            return False
+        if expected_hash is not None and rec.spec_hash and rec.spec_hash != expected_hash:
+            return False
+        return True
 
     # -- reporting ------------------------------------------------------------
 

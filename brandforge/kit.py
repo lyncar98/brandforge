@@ -21,13 +21,14 @@ backend that the same orchestrator drives.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Lock
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Set
 
 from .content import ContentRequest
 from .download import download_output
@@ -138,9 +139,15 @@ class PlannedAction:
     kind: str
     group: str
     label: str
-    action: str            # "create" | "skip"
+    action: str            # "create" | "update" | "skip" | "destroy"
     model: str
     detail: str = ""
+
+    SYMBOLS = {"create": "+", "update": "~", "skip": ".", "destroy": "-"}
+
+    @property
+    def symbol(self) -> str:
+        return self.SYMBOLS.get(self.action, "?")
 
 
 @dataclass
@@ -171,26 +178,91 @@ class KitRunner:
         self.config = config or KitConfig()
         self.fetch_image = fetch_image or (image_client.get_output_bytes if image_client else None)
         self.log = log
+        self._current_manifest: Optional[Manifest] = None  # set during run(); used by processors
         self._rpm = RpmLimiter(self.config.rpm_limit)
         self._lock = Lock()
 
+    # -- drift detection ------------------------------------------------------
+
+    def asset_digest(self, asset: KitAsset) -> str:
+        """Stable hash of the spec inputs that determine this asset's output.
+
+        Includes the brand-wide identity actually applied to the asset (``style``
+        for images, ``voice`` for content) so editing the brand re-plans every
+        affected asset — the property that makes this Brand-as-*Code*.
+        """
+        payload = {
+            "kind": asset.kind,
+            "group": asset.group,
+            "prompt": asset.prompt,
+            "params": {k: asset.params[k] for k in sorted(asset.params)},
+            "brand": self.kit.style if asset.kind == IMAGE else self.kit.voice,
+        }
+        blob = json.dumps(payload, sort_keys=True, ensure_ascii=False)
+        return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
+
     # -- planning -------------------------------------------------------------
 
-    def plan(self, manifest: Optional[Manifest] = None) -> List[PlannedAction]:
-        """Diff the spec against state without calling any API (terraform-style)."""
+    def plan(
+        self,
+        manifest: Optional[Manifest] = None,
+        select: Optional[Set[str]] = None,
+    ) -> List[PlannedAction]:
+        """Diff the spec against state without calling any API (terraform-style).
+
+        Classifies each asset as create / update (spec drifted or output missing) /
+        skip, and flags state records with no matching spec asset as destroy.
+        """
         actions: List[PlannedAction] = []
+        spec_keys = set()
         for a in self.kit.assets:
+            if select is not None and a.id not in select:
+                continue
             key = job_key(self.kit.brand_name, a.id)
-            satisfied = manifest is not None and not self.config.force and manifest.is_satisfied(key)
-            actions.append(
-                PlannedAction(
-                    asset_id=a.id, kind=a.kind, group=a.group, label=a.label or a.id,
-                    action="skip" if satisfied else "create",
-                    model=a.default_model(),
-                    detail="already in state" if satisfied else self._dest_for(a).name,
-                )
-            )
+            spec_keys.add(key)
+            digest = self.asset_digest(a)
+            if not self.config.force and manifest is not None and manifest.is_satisfied(key, digest):
+                action, detail = "skip", "in state, unchanged"
+            elif manifest is not None and manifest.get(key) is not None:
+                action, detail = "update", "spec changed or output missing"
+            else:
+                action, detail = "create", self._dest_for(a).name
+            actions.append(PlannedAction(
+                asset_id=a.id, kind=a.kind, group=a.group, label=a.label or a.id,
+                action=action, model=a.default_model(), detail=detail,
+            ))
+
+        # Orphans: state entries with no matching spec asset (only when not scoping
+        # to a selection, since a selection is an intentionally partial view).
+        if manifest is not None and select is None:
+            for key, rec in manifest.records.items():
+                if key not in spec_keys:
+                    actions.append(PlannedAction(
+                        asset_id=key.split("::")[-1], kind="", group=rec.product_id,
+                        label=rec.channel, action="destroy", model=rec.model,
+                        detail="not in spec — run `prune`",
+                    ))
         return actions
+
+    def prune(self, manifest: Manifest) -> List[PlannedAction]:
+        """Delete state records (and their output files) with no matching spec asset."""
+        spec_keys = {job_key(self.kit.brand_name, a.id) for a in self.kit.assets}
+        removed: List[PlannedAction] = []
+        for key in list(manifest.records.keys()):
+            if key in spec_keys:
+                continue
+            rec = manifest.remove(key)
+            if rec and rec.output_path:
+                try:
+                    Path(rec.output_path).unlink()
+                except OSError:
+                    pass
+            removed.append(PlannedAction(
+                asset_id=key.split("::")[-1], kind="",
+                group=rec.product_id if rec else "", label=rec.channel if rec else "",
+                action="destroy", model=rec.model if rec else "", detail="pruned",
+            ))
+        return removed
 
     # -- request building -----------------------------------------------------
 
@@ -199,15 +271,64 @@ class KitRunner:
             return asset.prompt
         return f"{asset.prompt}. {self.kit.style}".strip().rstrip(".") + "."
 
-    def build_image_request(self, asset: KitAsset) -> GenerationRequest:
+    def _resolve_style_refs(self, asset: KitAsset, manifest: Optional[Manifest] = None) -> List[str]:
+        """Return a list of public image URLs to pass as style references.
+
+        Accepts two param keys (can combine):
+        - ``style_reference_urls``: list of already-public URLs (pass through).
+        - ``style_ref_asset``: asset id whose completed output path we resolve from
+          state; the local file is uploaded to an ephemeral public host so the API
+          can fetch it.
+        """
+        urls: List[str] = list(asset.params.get("style_reference_urls", []))
+        ref_id = asset.params.get("style_ref_asset")
+        if ref_id and manifest:
+            key = job_key(self.kit.brand_name, ref_id)
+            rec = manifest.get(key)
+            if rec and rec.output_path and Path(rec.output_path).exists():
+                url = self._upload_local_image(rec.output_path)
+                if url:
+                    urls.append(url)
+                    self.log(f"style-ref  {asset.id} ← {ref_id} ({url[:60]}…)")
+        return urls
+
+    @staticmethod
+    def _upload_local_image(path: str) -> Optional[str]:
+        """Upload a local image to catbox.moe and return the public URL (best-effort)."""
+        import urllib.request
+        import urllib.parse
+        try:
+            data = Path(path).read_bytes()
+            filename = Path(path).name
+            boundary = "BrandForgeBoundary"
+            body = (
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="reqtype"\r\n\r\nanon\r\n'
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="fileToUpload"; filename="{filename}"\r\n'
+                f"Content-Type: image/jpeg\r\n\r\n"
+            ).encode() + data + f"\r\n--{boundary}--\r\n".encode()
+            req = urllib.request.Request(
+                "https://catbox.moe/user/api.php",
+                data=body,
+                headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                url = resp.read().decode().strip()
+            return url if url.startswith("http") else None
+        except Exception:
+            return None
+
+    def build_image_request(self, asset: KitAsset, manifest: Optional[Manifest] = None) -> GenerationRequest:
         p = asset.params
+        style_refs = self._resolve_style_refs(asset, manifest)
         return GenerationRequest(
             prompt=self._final_prompt(asset),
             model=Model(p.get("model", "uni-1")),
             aspect_ratio=p.get("aspect_ratio"),
             style=Style(p.get("style", "auto")),
             output_format=OutputFormat(p["output_format"]) if p.get("output_format") else None,
-            image_ref=[ImageRef(url=u) for u in p.get("style_reference_urls", [])][:9],
+            image_ref=[ImageRef(url=u) for u in style_refs][:9],
             web_search=bool(p.get("web_search", False)),
         ).validate()
 
@@ -238,22 +359,29 @@ class KitRunner:
 
     # -- run ------------------------------------------------------------------
 
-    def run(self, manifest: Optional[Manifest] = None) -> Manifest:
+    def run(
+        self,
+        manifest: Optional[Manifest] = None,
+        select: Optional[Set[str]] = None,
+    ) -> Manifest:
         out_dir = Path(self.config.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         manifest = manifest or Manifest(brand_name=self.kit.brand_name, output_dir=str(out_dir))
         manifest_path = out_dir / "manifest.json"
+        self._current_manifest = manifest  # make available to processors (style anchoring)
 
-        n_img = sum(a.kind == IMAGE for a in self.kit.assets)
-        n_txt = sum(a.kind == CONTENT for a in self.kit.assets)
-        self.log(f"brandspec '{self.kit.brand_name}': {len(self.kit.assets)} assets "
+        assets = [a for a in self.kit.assets if select is None or a.id in select]
+        n_img = sum(a.kind == IMAGE for a in assets)
+        n_txt = sum(a.kind == CONTENT for a in assets)
+        scope = "" if select is None else f" (selection of {len(assets)})"
+        self.log(f"brandspec '{self.kit.brand_name}': {len(assets)} assets{scope} "
                  f"({n_img} image, {n_txt} content)")
 
         todo = []
-        for a in self.kit.assets:
+        for a in assets:
             key = job_key(self.kit.brand_name, a.id)
-            if not self.config.force and manifest.is_satisfied(key):
-                self.log(f"skip   {a.id} (already in state)")
+            if not self.config.force and manifest.is_satisfied(key, self.asset_digest(a)):
+                self.log(f"skip   {a.id} (in state, unchanged)")
                 continue
             todo.append(a)
 
@@ -299,6 +427,7 @@ class KitRunner:
         rec = JobRecord(
             key=key, product_id=asset.group, channel=asset.label or asset.kind,
             prompt=asset.prompt, model=asset.default_model(),
+            spec_hash=self.asset_digest(asset),
         )
         try:
             req = self.build_content_request(asset)
@@ -367,9 +496,10 @@ class KitRunner:
             prompt=self._final_prompt(asset),
             model=asset.default_model(),
             aspect_ratio=asset.params.get("aspect_ratio"),
+            spec_hash=self.asset_digest(asset),
         )
         try:
-            req = self.build_image_request(asset)
+            req = self.build_image_request(asset, manifest=self._current_manifest)
         except InvalidRequestError as exc:
             rec.status, rec.failure_code, rec.failure_reason = (
                 JobStatus.NEEDS_ATTENTION, "invalid_request", str(exc))

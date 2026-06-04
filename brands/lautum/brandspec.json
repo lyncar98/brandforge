@@ -52,10 +52,11 @@
       "kind": "image",
       "group": "domains",
       "label": "Domain — Education",
-      "prompt": "A single clean conceptual mark for governed education AI on a clean off-white background: an open book abstracted into a few clean stacked translucent planes, with one sparse node graph arching protectively above it. Thin precise black linework, lots of empty white space, calm and uncluttered — one clear subject",
+      "prompt": "A single clean conceptual mark for governed education AI on a clean off-white background: an open book reduced to two or three thin flat translucent rectangular planes fanned at a slight angle, with a sparse node graph of three or four connected dots placed beside it. Thin, even, precise black linework, lots of empty white space, calm and uncluttered — exactly one clear subject. Pure abstract graphic with absolutely no text, no words, no letters, no labels, and no wordmark anywhere",
       "model": "uni-1",
       "aspect_ratio": "1:1",
-      "output_format": "jpeg"
+      "output_format": "jpeg",
+      "style_ref_asset": "domain_finance"
     },
     {
       "id": "domain_finance",
@@ -72,20 +73,22 @@
       "kind": "image",
       "group": "domains",
       "label": "Domain — Healthcare",
-      "prompt": "A single clean conceptual mark for governed clinical AI on a clean off-white background: a medical cross built from a few clean stacked translucent planes with one thin pulse line crossing it, and one sparse node graph beside it. Thin precise black linework, lots of empty white space, calm and uncluttered — one clear subject",
+      "prompt": "A single clean conceptual mark for governed clinical AI on a clean off-white background: a clean medical cross built from two thin flat translucent rectangular planes, with a sparse node graph of three or four connected dots beside it and a single thin flat pulse line underneath. Thin, even, precise black linework, lots of empty white space, calm and uncluttered — exactly one clear subject. Pure abstract graphic with absolutely no text, no words, no letters, no labels, and no wordmark anywhere",
       "model": "uni-1",
       "aspect_ratio": "1:1",
-      "output_format": "jpeg"
+      "output_format": "jpeg",
+      "style_ref_asset": "domain_finance"
     },
     {
       "id": "domain_defense",
       "kind": "image",
       "group": "domains",
       "label": "Domain — Government & defense",
-      "prompt": "A single clean conceptual mark for sovereign government and defense AI on a clean off-white background: a shield formed from a few clean stacked translucent planes enclosing one small sparse node graph. Thin precise black linework, lots of empty white space, calm and uncluttered — one clear subject",
+      "prompt": "A single clean conceptual mark for sovereign government and defense AI on a clean off-white background: a minimal shield outline drawn from three or four straight geometric lines forming a flat angular silhouette, with a sparse node graph of three or four connected dots inside it. Thin, even, precise black linework, lots of empty white space, calm and uncluttered — exactly one clear subject. Pure abstract graphic with absolutely no text, no words, no letters, no labels, and no wordmark anywhere",
       "model": "uni-1",
       "aspect_ratio": "1:1",
-      "output_format": "jpeg"
+      "output_format": "jpeg",
+      "style_ref_asset": "domain_finance"
     },
 
     {
