@@ -1,0 +1,142 @@
+{
+  "brand_name": "Lautum",
+
+  "style": "Lautum brand system. STRICTLY GRAYSCALE — pure black and near-white with mid-greys for depth only; absolutely no color, no hue, ever. The aesthetic of a modern AI-infrastructure company (OpenAI, Anthropic, Linear, X): crisp, flat, digital, vector-clean, architectural, premium. LINEWORK: precise, thin, even-weight geometric strokes; sharp corners; CAD-like mathematical accuracy. COMPOSITION: calm and minimal with generous negative space; one single clear subject; balanced, never busy, never cluttered. MOTIFS, used sparingly and deliberately (never as clutter): (1) large translucent rectangular planes stacked in receding depth — a control plane; (2) a SPARSE graph of a few small circular nodes joined by thin straight edges — an evidence graph. STRICTLY FORBIDDEN: any color; texture, grain, noise, film, paper, halftone; decorative gradients; glow, bokeh, lens blur; 3D-render shininess; heavy drop shadows (one faint flat shadow is the most allowed); photographic realism; dense or chaotic line tangles; logos, watermarks, UI chrome; and any unintended text.",
+
+  "voice": "Precise, sober, technical, and confident. Audience: engineers, CISOs, and risk leaders at regulated enterprises. No hype, no buzzwords, no 'effortless compliance', no 'AI-powered AI governance'. Every claim is backed by a concrete mechanism. Sentences are declarative and specific. The core idea: governance is generated as a byproduct of building and running AI — not assembled by hand. Lautum is a control plane, not documentation.",
+
+  "assets": [
+    {
+      "id": "hero_dark",
+      "kind": "image",
+      "group": "hero",
+      "label": "Primary hero background (16:9)",
+      "prompt": "Abstract hero background: several large translucent rectangular planes stacked in clean receding depth, lit from one edge, with a precise network of connected nodes and thin hairlines threaded between them. Deep black field, crisp luminous white edges, vast empty space on the left for a headline",
+      "model": "uni-1-max",
+      "aspect_ratio": "16:9",
+      "output_format": "jpeg"
+    },
+    {
+      "id": "hero_portrait",
+      "kind": "image",
+      "group": "hero",
+      "label": "Mobile / app hero (9:16)",
+      "prompt": "Vertical hero background that mirrors the wide hero composition: several large translucent rectangular planes stacked in clean receding depth toward the lower portion of the frame, lit from one edge, with a few thin hairlines and a sparse handful of small nodes threaded between them. Deep pure-black field, crisp luminous white edges. The entire top two-thirds is calm empty black space reserved for a headline. Quiet, architectural, minimal — not busy, no symmetrical wings, no gateway shapes",
+      "model": "uni-1-max",
+      "aspect_ratio": "9:16",
+      "output_format": "jpeg"
+    },
+    {
+      "id": "og_card",
+      "kind": "image",
+      "group": "social",
+      "label": "Open Graph / link preview card",
+      "prompt": "A wide social share card: centered, the single word \"LAUTUM\" set in a clean thin geometric sans-serif, on an abstract monochrome field of faint stacked planes and a node graph, generous margins, restrained and premium, crisp and digital",
+      "model": "uni-1-max",
+      "aspect_ratio": "16:9",
+      "output_format": "png"
+    },
+    {
+      "id": "launch_card",
+      "kind": "image",
+      "group": "social",
+      "label": "Square announcement tile",
+      "prompt": "A square monochrome announcement tile: an abstract evidence graph of connected nodes condensing into a single bright node, pure black background, crisp white lines, minimal, clean room for an overlaid caption",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "output_format": "jpeg"
+    },
+
+    {
+      "id": "domain_education",
+      "kind": "image",
+      "group": "domains",
+      "label": "Domain — Education",
+      "prompt": "A single clean conceptual mark for governed education AI on a clean off-white background: an open book abstracted into a few clean stacked translucent planes, with one sparse node graph arching protectively above it. Thin precise black linework, lots of empty white space, calm and uncluttered — one clear subject",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "output_format": "jpeg"
+    },
+    {
+      "id": "domain_finance",
+      "kind": "image",
+      "group": "domains",
+      "label": "Domain — Finance",
+      "prompt": "A single clean conceptual mark for governed financial AI on a clean off-white background: a minimal upward-stepping bar chart of three or four tall translucent rectangular planes, with one small sparse node graph of a few connected dots linked beside it. Thin, even, precise black linework, lots of empty white space, calm and uncluttered — exactly one clear subject, absolutely no tangle of lines. Pure abstract graphic with absolutely no text, no words, no letters, no labels, and no wordmark anywhere",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "output_format": "jpeg"
+    },
+    {
+      "id": "domain_healthcare",
+      "kind": "image",
+      "group": "domains",
+      "label": "Domain — Healthcare",
+      "prompt": "A single clean conceptual mark for governed clinical AI on a clean off-white background: a medical cross built from a few clean stacked translucent planes with one thin pulse line crossing it, and one sparse node graph beside it. Thin precise black linework, lots of empty white space, calm and uncluttered — one clear subject",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "output_format": "jpeg"
+    },
+    {
+      "id": "domain_defense",
+      "kind": "image",
+      "group": "domains",
+      "label": "Domain — Government & defense",
+      "prompt": "A single clean conceptual mark for sovereign government and defense AI on a clean off-white background: a shield formed from a few clean stacked translucent planes enclosing one small sparse node graph. Thin precise black linework, lots of empty white space, calm and uncluttered — one clear subject",
+      "model": "uni-1",
+      "aspect_ratio": "1:1",
+      "output_format": "jpeg"
+    },
+
+    {
+      "id": "tagline",
+      "kind": "content",
+      "group": "messaging",
+      "label": "Primary tagline",
+      "content_type": "tagline",
+      "brief": "Write the primary tagline for Lautum, an AI governance control plane for sensitive, regulated domains (education, finance, healthcare, defense). It should capture that governance evidence is generated automatically as a byproduct of building and running AI — capability, not paperwork.",
+      "max_words": 9,
+      "temperature": 0.8
+    },
+    {
+      "id": "manifesto",
+      "kind": "content",
+      "group": "messaging",
+      "label": "One-paragraph manifesto",
+      "content_type": "manifesto",
+      "brief": "Write a single, tight paragraph (the 'about' statement) for Lautum. Explain that it is the control plane every regulated AI team rebuilds badly five times: eval gates, release approvals, runtime monitoring, lineage, and evidence exports as byproducts of engineering workflow — crosswalked to NIST AI RMF, ISO/IEC 42001, and the EU AI Act. Sober and concrete.",
+      "max_words": 70,
+      "temperature": 0.7
+    },
+    {
+      "id": "meta_description",
+      "kind": "content",
+      "group": "messaging",
+      "label": "SEO meta description",
+      "content_type": "meta_description",
+      "brief": "Write an SEO meta description for lautum.ai. Lautum is an AI governance control plane for enterprises operating AI in sensitive, regulated, high-stakes domains. Governance evidence as a byproduct of engineering — not a binder beside the product.",
+      "max_words": 28,
+      "temperature": 0.5
+    },
+    {
+      "id": "launch_post",
+      "kind": "content",
+      "group": "messaging",
+      "label": "Launch social post",
+      "content_type": "social_post",
+      "brief": "Write a launch announcement post for Lautum suitable for X/LinkedIn. Lead with the core bet: the AI governance market is splitting into 'describe what you have' (documentation) and 'run what you have, safely' (a control plane). Lautum builds the second, for sensitive domains. Confident, no hype, one or two crisp sentences.",
+      "max_words": 50,
+      "temperature": 0.8
+    },
+    {
+      "id": "alt_hero",
+      "kind": "content",
+      "group": "messaging",
+      "label": "Hero image alt text (accessibility)",
+      "content_type": "alt_text",
+      "brief": "Write concise, literal alt text describing the Lautum hero image: layered translucent planes stacked in depth with a graph of connected nodes threaded between them, monochrome black and white. Functional and descriptive, not marketing.",
+      "max_words": 30,
+      "temperature": 0.3
+    }
+  ]
+}

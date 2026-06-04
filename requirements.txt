@@ -1,0 +1,6 @@
+# Runtime dependencies for live API calls. The package is otherwise stdlib-only:
+# mock mode and the test suite need nothing here.
+httpx>=0.27,<1.0          # image output downloads
+luma-agents>=0.1,<1.0     # official Luma SDK for uni-1 image generation
+anthropic>=0.40           # official Anthropic SDK for Claude content generation
+python-dotenv>=1.0,<2.0   # load API keys from a local .env

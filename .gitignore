@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+.env
+out/
+out-*/
+*.log
+node_modules/
+package-lock.json
+.shot.js
+*.egg-info/
+build/
+dist/
+.DS_Store
+
+# Internal narrative docs — keep local, not part of the public repo history
+ARTICLE.md
+DEMO.md
+apply-real.log
